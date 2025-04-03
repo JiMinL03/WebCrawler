@@ -46,6 +46,13 @@ class SearchPage:
         search_button = self.driver.wait_for_element(By.CSS_SELECTOR, 'input[type="submit"]')
         search_button.click()
 
+        time.sleep(10)
+        self.search_btn()
+
+    def search_btn(self):
+        btn_element = self.driver.find_element(By.CLASS_NAME, 'btn-base')
+        btn_element.click()
+
     def get_search_results(self):
         self.driver.wait_for_element(By.CLASS_NAME, 'con-box')
 
@@ -67,27 +74,17 @@ class SearchPage:
 
 class GetLinks:
     @staticmethod
-    def is_valid_url(base_url, url):
-        """ 동일 도메인 내의 URL인지 검사하고, 유효한 링크인지 확인합니다. """
-        parsed_base = urlparse(base_url)
-        parsed_url = urlparse(url)
-        if parsed_base.netloc != parsed_url.netloc:
-            return False
-        if not parsed_url.scheme.startswith('http'):
-            return False
-        return True
-
-    @staticmethod
     def get_links(url):
         """ 주어진 URL 페이지에서 모든 링크를 추출합니다. """
         response = requests.get(url)
         soup = BeautifulSoup(response.text, 'html.parser')
         links = set()
+
         for link in soup.find_all('a', href=True):
             full_url = urljoin(url, link['href'])
-            if GetLinks.is_valid_url(url, full_url):  # 클래스에서 메서드 호출 시 클래스 이름을 명시해야 함
-                links.add(full_url)
+            links.add(full_url)
         return links
+
 
     @staticmethod
     def crawl(start_url, max_depth=3):
@@ -120,7 +117,10 @@ def main():
 
     # 검색어 입력 및 검색 결과 추출
     search_page.search_keyword(keyword)
+    #search_page.search_btn()
     search_results = search_page.get_search_results()
+
+    #해당 페이지의 검색 결과 더보기 버튼 클릭 후 결과 추출
 
     # 결과 출력
     print(search_results)
