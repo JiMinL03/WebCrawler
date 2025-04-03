@@ -1,14 +1,14 @@
 import chromedriver_autoinstaller
+import requests
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
-import requests
-from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
-from collections import deque
+from urllib.parse import urljoin
+
 
 class WebDriver:
     def __init__(self, headless=True):
@@ -38,50 +38,68 @@ class SearchPage:
         self.url = url
 
     def search_keyword(self, keyword):
+        self.open_search_page()
+        self.enter_search_keyword(keyword)
+        self.click_search_button()
+        self.wait_for_results()
+
+    def open_search_page(self):
         self.driver.open_page(self.url)
+
+    def enter_search_keyword(self, keyword):
         input_element = self.driver.find_element(By.ID, 'schKeyword')
         input_element.clear()
         input_element.send_keys(keyword)
 
+    def click_search_button(self):
         search_button = self.driver.wait_for_element(By.CSS_SELECTOR, 'input[type="submit"]')
         search_button.click()
 
+    def wait_for_results(self):
         time.sleep(5)
-        self.search_btn()
+        self.click_additional_search_button()
 
-    def search_btn(self):
+    def click_additional_search_button(self):
         btn_element = self.driver.find_element(By.CLASS_NAME, 'btn-base')
         btn_element.click()
 
     def get_search_results(self):
         self.driver.wait_for_element(By.CLASS_NAME, 'con-box')
-
-        # 페이지 소스를 가져옵니다.
         page_source = self.driver.driver.page_source
         soup = BeautifulSoup(page_source, 'html.parser')
 
-        # 'content' ID를 가진 요소를 찾습니다.
-        content_element = soup.find(id='content')
+        content_element = self.extract_content_by_id(soup, 'content')
+        self.print_content(content_element)
 
-        # 찾은 요소의 텍스트만 반환합니다.
+        div_elements = self.extract_div_elements_by_class(soup, 'board-subject')
+        self.print_links(div_elements)
+
+    def extract_content_by_id(self, soup, id):
+        return soup.find(id=id)
+
+    def print_content(self, content_element):
         if content_element:
             print(content_element.get_text())
         else:
             print("Content not found")
 
-        # class name 'board-subject' 를 가진 요소를 찾고 a 태그를 가진 링크들을 출력합니다.
-        div_elements = soup.find_all('div', attrs={'class': 'board-subject'})
+    def extract_div_elements_by_class(self, soup, class_name):
+        return soup.find_all('div', attrs={'class': class_name})
 
-        url = 'https://www.deu.ac.kr/'
+    def print_links(self, div_elements):
+        base_url = 'https://www.deu.ac.kr/'
         if div_elements:
-            # 'board-subject' div 안에 있는 모든 a 태그를 찾습니다.
             for div in div_elements:
-                link_elements = div.find_all('a', href=True)  # div 내의 a 태그들 찾기
+                link_elements = div.find_all('a', href=True)
                 for link in link_elements:
-                    full_url = urljoin(url, link['href'])
-                    print(full_url)
+                    full_url = urljoin(base_url, link['href'])
+                    response = requests.get(full_url)
+                    soup = BeautifulSoup(response.text, 'html.parser')
+                    print(soup.get_text())
+                    return full_url
         else:
             print("Div elements not found")
+
 
 def main():
     url = 'https://www.deu.ac.kr/www/search.do'  # 기본 검색 URL
@@ -92,12 +110,7 @@ def main():
 
     # 검색어 입력 및 검색 결과 추출
     search_page.search_keyword(keyword)
-    search_results = search_page.get_search_results()
-
-    #해당 페이지의 검색 결과 더보기 버튼 클릭 후 결과 추출
-
-    # 결과 출력
-    print(search_results)
+    search_page.get_search_results()
 
     # 브라우저 종료
     driver.quit()
