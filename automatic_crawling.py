@@ -46,7 +46,7 @@ class SearchPage:
         search_button = self.driver.wait_for_element(By.CSS_SELECTOR, 'input[type="submit"]')
         search_button.click()
 
-        time.sleep(10)
+        time.sleep(5)
         self.search_btn()
 
     def search_btn(self):
@@ -65,48 +65,23 @@ class SearchPage:
 
         # 찾은 요소의 텍스트만 반환합니다.
         if content_element:
-            return content_element.get_text()
+            print(content_element.get_text())
         else:
-            return "Content not found"
+            print("Content not found")
 
-    def get_search_links(self):
-        GetLinks.crawl(self.url, max_depth=3)
+        # class name 'board-subject' 를 가진 요소를 찾고 a 태그를 가진 링크들을 출력합니다.
+        div_elements = soup.find_all('div', attrs={'class': 'board-subject'})
 
-class GetLinks:
-    @staticmethod
-    def get_links(url):
-        """ 주어진 URL 페이지에서 모든 링크를 추출합니다. """
-        response = requests.get(url)
-        soup = BeautifulSoup(response.text, 'html.parser')
-        links = set()
-
-        for link in soup.find_all('a', href=True):
-            full_url = urljoin(url, link['href'])
-            links.add(full_url)
-        return links
-
-
-    @staticmethod
-    def crawl(start_url, max_depth=3):
-        """ 너비 우선 탐색(BFS)을 사용하여 웹 크롤링을 실행합니다. """
-        visited = set()
-        queue = deque([(start_url, 0)])  # URL과 현재 깊이를 저장합니다.
-
-        while queue:
-            current_url, depth = queue.popleft()
-            if depth > max_depth:
-                break
-            if current_url not in visited:
-                visited.add(current_url)
-                print(f"Visiting: {current_url} at depth {depth}")
-                try:
-                    for link in GetLinks.get_links(current_url):  # 클래스에서 메서드 호출 시 클래스 이름을 명시해야 함
-                        if link not in visited:
-                            queue.append((link, depth + 1))
-                except requests.exceptions.RequestException as e:
-                    print(f"Error fetching {current_url}: {e}")
-
-        print("Crawling finished.")
+        url = 'https://www.deu.ac.kr/'
+        if div_elements:
+            # 'board-subject' div 안에 있는 모든 a 태그를 찾습니다.
+            for div in div_elements:
+                link_elements = div.find_all('a', href=True)  # div 내의 a 태그들 찾기
+                for link in link_elements:
+                    full_url = urljoin(url, link['href'])
+                    print(full_url)
+        else:
+            print("Div elements not found")
 
 def main():
     url = 'https://www.deu.ac.kr/www/search.do'  # 기본 검색 URL
@@ -117,14 +92,12 @@ def main():
 
     # 검색어 입력 및 검색 결과 추출
     search_page.search_keyword(keyword)
-    #search_page.search_btn()
     search_results = search_page.get_search_results()
 
     #해당 페이지의 검색 결과 더보기 버튼 클릭 후 결과 추출
 
     # 결과 출력
     print(search_results)
-    search_page.get_search_links()
 
     # 브라우저 종료
     driver.quit()
